@@ -1,0 +1,20 @@
+{
+  "name": "connectx7-mcp-plugin",
+  "description": "ConnectX-7/DOCA/VMA development tools for broadcast/media teams",
+  "owner": {
+    "name": "Pavel",
+    "email": "pavel@example.com"
+  },
+  "plugins": [
+    {
+      "name": "connectx7-development",
+      "description": "NVIDIA ConnectX-7, DOCA, VMA kernel bypass development for broadcast/media and ST 2110",
+      "version": "1.0.0",
+      "source": "./",
+      "author": {
+        "name": "Pavel",
+        "email": "pavel@example.com"
+      }
+    }
+  ]
+}

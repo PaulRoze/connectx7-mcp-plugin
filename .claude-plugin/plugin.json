@@ -1,0 +1,18 @@
+{
+  "name": "connectx7-development",
+  "description": "NVIDIA ConnectX-7, DOCA, VMA, RDMA development toolkit for broadcast/media and ST 2110. Source of truth for ConnectX-7 driver development - no reverse engineering needed.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Pavel",
+    "email": "pavel@example.com"
+  },
+  "homepage": "https://github.com/PaulRoze/connectx7-mcp-plugin",
+  "repository": "https://github.com/PaulRoze/connectx7-mcp-plugin",
+  "license": "MIT",
+  "keywords": [
+    "nvidia", "connectx-7", "connectx7", "doca", "vma", "libvma",
+    "rdma", "infiniband", "roce", "mlx5", "mlnx_ofed",
+    "kernel-bypass", "st2110", "broadcast", "media", "mellanox",
+    "libibverbs", "high-performance-networking"
+  ]
+}
