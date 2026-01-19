@@ -9,7 +9,7 @@
     {
       "name": "connectx7-development",
       "description": "NVIDIA ConnectX-7, DOCA, VMA kernel bypass development for broadcast/media and ST 2110",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "source": "./",
       "author": {
         "name": "Pavel Rozentsvet",

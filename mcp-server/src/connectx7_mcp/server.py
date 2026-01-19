@@ -24,15 +24,15 @@ CACHE_DIR = Path.home() / ".cache" / "connectx7-mcp"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 CACHE_HOURS = 24
 
-# Comprehensive documentation sources
+# Comprehensive documentation sources (URLs verified Jan 2025)
 DOC_SOURCES = {
     "connectx7": {
-        "base": "https://docs.nvidia.com/networking/display/ConnectX7VPI",
+        "base": "https://docs.nvidia.com/networking/display/connectx7vpi",
         "name": "ConnectX-7 User Manual",
         "pages": [
-            "", "/Introduction", "/Hardware+Installation", "/Driver+Installation",
-            "/Firmware+Update", "/Port+Configuration", "/Troubleshooting",
-            "/Specifications", "/Performance+Tuning"
+            "", "/introduction", "/hardwareinstallation", "/driverinstallation",
+            "/firmwareupdate", "/portconfiguration", "/troubleshooting",
+            "/specifications", "/performancetuning"
         ]
     },
     "doca": {
@@ -45,25 +45,25 @@ DOC_SOURCES = {
         ]
     },
     "vma": {
-        "base": "https://docs.nvidia.com/networking/display/VMAv98",
-        "name": "VMA User Manual",
+        "base": "https://docs.nvidia.com/networking/display/vmav9880",
+        "name": "VMA User Manual v9.8.80",
         "pages": [
-            "", "/Introduction", "/Installation", "/Configuration",
-            "/API", "/Performance+Tuning", "/Troubleshooting"
+            "", "/introduction+to+vma", "/installing-vma", "/vma+configuration",
+            "/vma+extra+api", "/performance+tuning", "/troubleshooting"
         ]
     },
     "rdma": {
-        "base": "https://docs.nvidia.com/networking/display/RDMAAwareProgrammingv17",
+        "base": "https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17",
         "name": "RDMA Programming Guide",
         "pages": [
-            "", "/RDMA-Aware+Programming+Overview",
-            "/RDMA+Verbs+API", "/Programming+Examples+Using+IBV+Verbs"
+            "", "/rdma-aware+programming+overview",
+            "/rdma+verbs+api", "/programming+examples+using+ibv+verbs"
         ]
     },
     "mlnx_ofed": {
-        "base": "https://docs.nvidia.com/networking/display/MLNXOFEDv24100700",
+        "base": "https://docs.nvidia.com/networking/display/mlnxofedv24100700",
         "name": "MLNX_OFED Documentation",
-        "pages": ["", "/Introduction", "/Installation", "/Performance+Tuning"]
+        "pages": ["", "/introduction", "/installation", "/performance+tuning"]
     },
     "mlx5_kernel": {
         "base": "https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5",
@@ -71,7 +71,7 @@ DOC_SOURCES = {
         "pages": ["/index.html", "/kconfig.html", "/tracepoints.html", "/counters.html"]
     },
     "dpdk_mlx5": {
-        "base": "https://doc.dpdk.org/guides/platform",
+        "base": "https://doc.dpdk.org/guides/nics",
         "name": "DPDK mlx5 Driver",
         "pages": ["/mlx5.html"]
     }

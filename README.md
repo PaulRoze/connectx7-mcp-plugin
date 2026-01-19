@@ -128,8 +128,8 @@ git push
 
 - [ConnectX-7 User Manual](https://docs.nvidia.com/networking/display/connectx7vpi)
 - [DOCA SDK](https://docs.nvidia.com/doca/sdk/)
-- [VMA Documentation](https://docs.nvidia.com/networking/display/VMAv98/)
-- [RDMA Programming Guide](https://docs.nvidia.com/networking/display/RDMAAwareProgrammingv17/)
+- [VMA Documentation](https://docs.nvidia.com/networking/display/vmav9880/)
+- [RDMA Programming Guide](https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17/)
 - [mlx5 Kernel Driver](https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5/)
 - [NVIDIA Networking Forums](https://forums.developer.nvidia.com/c/networking/)
 

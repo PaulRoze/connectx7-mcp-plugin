@@ -285,6 +285,6 @@ gcc -o rdma_app rdma_app.c -libverbs -lrdmacm -lmlx5
 
 ## Official Resources
 
-- [NVIDIA RDMA Programming Guide](https://docs.nvidia.com/networking/display/RDMAAwareProgrammingv17/)
+- [NVIDIA RDMA Programming Guide](https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17/)
 - [RDMAmojo Tutorial](https://www.rdmamojo.com/)
 - [rdma-core GitHub](https://github.com/linux-rdma/rdma-core)

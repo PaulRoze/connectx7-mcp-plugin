@@ -59,4 +59,4 @@ Use `fetch_nvidia_docs` and `search_nvidia_docs` for latest online docs.
 For latest documentation, fetch from:
 - [DOCA SDK](https://docs.nvidia.com/doca/sdk/)
 - [ConnectX-7 Manual](https://docs.nvidia.com/networking/display/ConnectX7VPI/)
-- [VMA Documentation](https://docs.nvidia.com/networking/display/VMAv98/)
+- [VMA Documentation](https://docs.nvidia.com/networking/display/vmav9880/)
