@@ -1,6 +1,7 @@
 ---
 name: connectx7-development
 description: "ConnectX-7, DOCA, VMA kernel bypass development reference. Use when working with Mellanox/NVIDIA networking, RDMA, kernel bypass, ST 2110, or high-performance UDP/multicast. Triggers on: ConnectX, DOCA, VMA, libvma, MLNX_OFED, mlx5, RoCE, InfiniBand, SMPTE ST 2110."
+last_verified: 2025-01-15
 ---
 
 # ConnectX-7 & DOCA Development Reference

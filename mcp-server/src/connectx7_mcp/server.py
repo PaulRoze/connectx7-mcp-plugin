@@ -3,6 +3,7 @@ ConnectX-7 MCP Server
 Fetches and searches NVIDIA ConnectX-7, DOCA, VMA, and RDMA documentation.
 """
 
+import asyncio
 import json
 import hashlib
 import re
@@ -14,6 +15,7 @@ import httpx
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 
 mcp = FastMCP(
     "connectx7-docs",
@@ -103,7 +105,7 @@ async def fetch(url: str, refresh: bool = False) -> dict:
         try:
             r = await client.get(url, headers={"User-Agent": "ConnectX7-MCP/1.0"})
             r.raise_for_status()
-        except Exception as e:
+        except (httpx.HTTPError, OSError) as e:
             return {"error": str(e)}
 
     soup = BeautifulSoup(r.text, "html.parser")
@@ -114,7 +116,7 @@ async def fetch(url: str, refresh: bool = False) -> dict:
     if not main:
         return {"error": "No content found"}
 
-    title = soup.title.string if soup.title else url.split("/")[-1]
+    title = soup.title.get_text() if soup.title else url.split("/")[-1]
     content = md(str(main), heading_style="ATX")
     content = re.sub(r'\n{3,}', '\n\n', content)
 
@@ -140,14 +142,14 @@ async def fetch_nvidia_docs(topic: str, page: str = "", refresh: bool = False) -
     topic = topic.lower().replace("-", "_").replace(" ", "_")
     if topic not in DOC_SOURCES:
         available = ", ".join(DOC_SOURCES.keys())
-        return f"Unknown topic '{topic}'. Available: {available}"
+        raise ToolError(f"Unknown topic '{topic}'. Available: {available}")
 
     src = DOC_SOURCES[topic]
     url = f"{src['base']}{page}"
     result = await fetch(url, refresh)
 
     if "error" in result:
-        return f"Error fetching {url}: {result['error']}"
+        raise ToolError(f"Error fetching {url}: {result['error']}")
 
     status = "cached" if result.get("cached") else "fresh"
     return f"# {result['title']}\n\nSource: {url} ({status})\n\n{result['content']}"
@@ -172,25 +174,32 @@ async def search_nvidia_docs(query: str, topics: Optional[list[str]] = None) -> 
     query_lower = query.lower()
     results = []
 
+    # Build list of all (topic, page_path, url) to fetch concurrently
+    fetch_tasks = []
     for topic in topics:
         if topic not in DOC_SOURCES:
             continue
         src = DOC_SOURCES[topic]
         for page_path in src["pages"]:
             url = f"{src['base']}{page_path}"
-            data = await fetch(url)
-            if "error" in data:
-                continue
-            content = data.get("content", "")
-            if query_lower in content.lower():
-                paras = [p for p in content.split("\n\n") if query_lower in p.lower()]
-                if paras:
-                    results.append({
-                        "src": src["name"],
-                        "title": data.get("title", page_path),
-                        "url": url,
-                        "matches": paras[:2]
-                    })
+            fetch_tasks.append((src, page_path, url, fetch(url)))
+
+    # Fetch all pages concurrently
+    fetched = await asyncio.gather(*(t[3] for t in fetch_tasks), return_exceptions=True)
+
+    for (src, page_path, url, _), data in zip(fetch_tasks, fetched):
+        if isinstance(data, Exception) or "error" in data:
+            continue
+        content = data.get("content", "")
+        if query_lower in content.lower():
+            paras = [p for p in content.split("\n\n") if query_lower in p.lower()]
+            if paras:
+                results.append({
+                    "src": src["name"],
+                    "title": data.get("title", page_path),
+                    "url": url,
+                    "matches": paras[:2]
+                })
 
     if not results:
         return f"No results found for '{query}'"
@@ -219,7 +228,10 @@ async def list_nvidia_docs() -> str:
     for topic, src in DOC_SOURCES.items():
         out.append(f"## {src['name']} (`{topic}`)")
         out.append(f"Base URL: {src['base']}")
-        out.append(f"Pages: {len(src['pages'])}")
+        out.append(f"Pages ({len(src['pages'])}):")
+        for page in src["pages"]:
+            label = page if page else "(main page)"
+            out.append(f"  - `{label}`")
         out.append("")
 
     out.append("## Usage Examples")
@@ -258,14 +270,14 @@ def get_official_links() -> str:
 
 ## Primary Documentation
 - **ConnectX-7 User Manual**: https://docs.nvidia.com/networking/display/connectx7vpi
-- **DOCA SDK**: https://docs.nvidia.com/doca/sdk/
-- **VMA User Manual**: https://docs.nvidia.com/networking/display/VMAv98/
-- **RDMA Programming Guide**: https://docs.nvidia.com/networking/display/RDMAAwareProgrammingv17/
+- **DOCA SDK**: https://docs.nvidia.com/doca/sdk
+- **VMA User Manual v9.8.80**: https://docs.nvidia.com/networking/display/vmav9880
+- **RDMA Programming Guide**: https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17
 
 ## Driver Documentation
-- **mlx5 Kernel Driver**: https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5/
-- **DPDK mlx5 Driver**: https://doc.dpdk.org/guides/platform/mlx5.html
-- **MLNX_OFED**: https://docs.nvidia.com/networking/display/MLNXOFEDv24100700/
+- **mlx5 Kernel Driver**: https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5
+- **DPDK mlx5 Driver**: https://doc.dpdk.org/guides/nics/mlx5.html
+- **MLNX_OFED**: https://docs.nvidia.com/networking/display/mlnxofedv24100700
 
 ## Downloads & Tools
 - **DOCA Downloads**: https://developer.nvidia.com/networking/doca

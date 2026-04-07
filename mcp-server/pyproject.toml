@@ -1,6 +1,6 @@
 [project]
 name = "connectx7-mcp"
-version = "1.0.0"
+version = "1.0.2"
 description = "MCP server for NVIDIA ConnectX-7/DOCA/VMA documentation"
 requires-python = ">=3.10"
 dependencies = [
@@ -9,6 +9,9 @@ dependencies = [
     "beautifulsoup4>=4.12.0",
     "markdownify>=0.13.0",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.4"]
 
 [project.scripts]
 connectx7-mcp = "connectx7_mcp.server:main"
