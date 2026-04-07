@@ -121,7 +121,9 @@ class TestFetch:
         ):
             mock_client = AsyncMock()
             mock_client.get = AsyncMock(return_value=_fake_response(SIMPLE_HTML))
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await fetch(url)
@@ -162,8 +164,12 @@ class TestFetch:
             patch("connectx7_mcp.server.httpx.AsyncClient") as mock_client_cls,
         ):
             mock_client = AsyncMock()
-            mock_client.get = AsyncMock(return_value=_fake_response("", status_code=500))
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.get = AsyncMock(
+                return_value=_fake_response("", status_code=500)
+            )
+            mock_client_cls.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await fetch(url)
@@ -261,7 +267,9 @@ class TestFetchNvidiaDocs:
             "url": "https://docs.nvidia.com/networking/display/connectx7vpi",
             "cached": True,
         }
-        with patch("connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data):
+        with patch(
+            "connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data
+        ):
             result = await fetch_nvidia_docs("connectx7")
 
         assert "ConnectX-7 Intro" in result
@@ -276,7 +284,9 @@ class TestFetchNvidiaDocs:
             "url": "https://docs.nvidia.com/doca/sdk",
             "cached": False,
         }
-        with patch("connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data):
+        with patch(
+            "connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data
+        ):
             # Should handle hyphens and spaces
             result = await fetch_nvidia_docs("mlnx-ofed")
         assert "error" not in result.lower() or "Error fetching" not in result
@@ -284,7 +294,9 @@ class TestFetchNvidiaDocs:
     @pytest.mark.asyncio
     async def test_fetch_error_raises_tool_error(self):
         fake_data = {"error": "Connection timeout"}
-        with patch("connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data):
+        with patch(
+            "connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data
+        ):
             with pytest.raises(ToolError, match="Connection timeout"):
                 await fetch_nvidia_docs("connectx7")
 
@@ -303,7 +315,9 @@ class TestSearchNvidiaDocs:
             "url": "https://example.com/rdma",
             "cached": True,
         }
-        with patch("connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data):
+        with patch(
+            "connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data
+        ):
             result = await search_nvidia_docs("kernel bypass", topics=["rdma"])
 
         assert "kernel bypass" in result.lower()
@@ -317,15 +331,21 @@ class TestSearchNvidiaDocs:
             "url": "https://example.com",
             "cached": True,
         }
-        with patch("connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data):
-            result = await search_nvidia_docs("xyzzy_nonexistent_term_42", topics=["rdma"])
+        with patch(
+            "connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data
+        ):
+            result = await search_nvidia_docs(
+                "xyzzy_nonexistent_term_42", topics=["rdma"]
+            )
 
         assert "No results found" in result
 
     @pytest.mark.asyncio
     async def test_skips_errored_fetches(self):
         fake_data = {"error": "timeout"}
-        with patch("connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data):
+        with patch(
+            "connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data
+        ):
             result = await search_nvidia_docs("anything", topics=["rdma"])
 
         assert "No results found" in result
@@ -338,7 +358,9 @@ class TestSearchNvidiaDocs:
             "url": "https://example.com",
             "cached": True,
         }
-        with patch("connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data):
+        with patch(
+            "connectx7_mcp.server.fetch", new_callable=AsyncMock, return_value=fake_data
+        ):
             # "bogus" should be silently skipped, "rdma" should work
             result = await search_nvidia_docs("query term", topics=["bogus", "rdma"])
 

@@ -29,6 +29,10 @@ jobs:
         working-directory: mcp-server
         run: ruff check src/ tests/
 
+      - name: Check formatting with ruff
+        working-directory: mcp-server
+        run: ruff format --check src/ tests/
+
       - name: Run tests
         working-directory: mcp-server
         run: pytest tests/ -v

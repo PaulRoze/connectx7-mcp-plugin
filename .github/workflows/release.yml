@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install and test
+        working-directory: mcp-server
+        run: |
+          pip install -e ".[dev]"
+          pytest tests/ -v
+
+      - name: Verify tag matches package version
+        run: |
+          TAG_VER="${GITHUB_REF_NAME#v}"
+          PKG_VER=$(python3 -c "
+          import re
+          txt = open('mcp-server/pyproject.toml').read()
+          print(re.search(r'version\s*=\s*\"(.+?)\"', txt).group(1))
+          ")
+          if [ "$TAG_VER" != "$PKG_VER" ]; then
+            echo "::error::Tag version ($TAG_VER) does not match package version ($PKG_VER)"
+            exit 1
+          fi
+          echo "Version verified: $TAG_VER"
+
+      - name: Create GitHub Release
+        run: gh release create ${{ github.ref_name }} --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

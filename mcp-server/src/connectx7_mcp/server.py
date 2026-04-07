@@ -19,7 +19,7 @@ from fastmcp.exceptions import ToolError
 
 mcp = FastMCP(
     "connectx7-docs",
-    instructions="NVIDIA ConnectX-7, DOCA, VMA, RDMA documentation and reference tools"
+    instructions="NVIDIA ConnectX-7, DOCA, VMA, RDMA documentation and reference tools",
 )
 
 CACHE_DIR = Path.home() / ".cache" / "connectx7-mcp"
@@ -32,51 +32,70 @@ DOC_SOURCES = {
         "base": "https://docs.nvidia.com/networking/display/connectx7vpi",
         "name": "ConnectX-7 User Manual",
         "pages": [
-            "", "/introduction", "/hardwareinstallation", "/driverinstallation",
-            "/firmwareupdate", "/portconfiguration", "/troubleshooting",
-            "/specifications", "/performancetuning"
-        ]
+            "",
+            "/introduction",
+            "/hardwareinstallation",
+            "/driverinstallation",
+            "/firmwareupdate",
+            "/portconfiguration",
+            "/troubleshooting",
+            "/specifications",
+            "/performancetuning",
+        ],
     },
     "doca": {
         "base": "https://docs.nvidia.com/doca/sdk",
         "name": "DOCA SDK",
         "pages": [
-            "", "/doca-overview/index.html",
+            "",
+            "/doca-overview/index.html",
             "/doca-installation-guide-for-linux/index.html",
-            "/rdma-over-converged-ethernet/index.html"
-        ]
+            "/rdma-over-converged-ethernet/index.html",
+        ],
     },
     "vma": {
         "base": "https://docs.nvidia.com/networking/display/vmav9880",
         "name": "VMA User Manual v9.8.80",
         "pages": [
-            "", "/introduction+to+vma", "/installing-vma", "/vma+configuration",
-            "/vma+extra+api", "/performance+tuning", "/troubleshooting"
-        ]
+            "",
+            "/introduction+to+vma",
+            "/installing-vma",
+            "/vma+configuration",
+            "/vma+extra+api",
+            "/performance+tuning",
+            "/troubleshooting",
+        ],
     },
     "rdma": {
         "base": "https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17",
         "name": "RDMA Programming Guide",
         "pages": [
-            "", "/rdma-aware+programming+overview",
-            "/rdma+verbs+api", "/programming+examples+using+ibv+verbs"
-        ]
+            "",
+            "/rdma-aware+programming+overview",
+            "/rdma+verbs+api",
+            "/programming+examples+using+ibv+verbs",
+        ],
     },
     "mlnx_ofed": {
         "base": "https://docs.nvidia.com/networking/display/mlnxofedv24100700",
         "name": "MLNX_OFED Documentation",
-        "pages": ["", "/introduction", "/installation", "/performance+tuning"]
+        "pages": ["", "/introduction", "/installation", "/performance+tuning"],
     },
     "mlx5_kernel": {
         "base": "https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5",
         "name": "mlx5 Kernel Driver",
-        "pages": ["/index.html", "/kconfig.html", "/tracepoints.html", "/counters.html"]
+        "pages": [
+            "/index.html",
+            "/kconfig.html",
+            "/tracepoints.html",
+            "/counters.html",
+        ],
     },
     "dpdk_mlx5": {
         "base": "https://doc.dpdk.org/guides/nics",
         "name": "DPDK mlx5 Driver",
-        "pages": ["/mlx5.html"]
-    }
+        "pages": ["/mlx5.html"],
+    },
 }
 
 
@@ -89,7 +108,9 @@ def cache_valid(path: Path) -> bool:
         return False
     try:
         data = json.loads(path.read_text())
-        return datetime.now() - datetime.fromisoformat(data["ts"]) < timedelta(hours=CACHE_HOURS)
+        return datetime.now() - datetime.fromisoformat(data["ts"]) < timedelta(
+            hours=CACHE_HOURS
+        )
     except (json.JSONDecodeError, KeyError, ValueError, OSError):
         return False
 
@@ -112,15 +133,26 @@ async def fetch(url: str, refresh: bool = False) -> dict:
     for tag in soup(["nav", "header", "footer", "script", "style", "aside"]):
         tag.decompose()
 
-    main = soup.find("main") or soup.find("article") or soup.find(class_="content") or soup.find(id="content") or soup.body
+    main = (
+        soup.find("main")
+        or soup.find("article")
+        or soup.find(class_="content")
+        or soup.find(id="content")
+        or soup.body
+    )
     if not main:
         return {"error": "No content found"}
 
     title = soup.title.get_text() if soup.title else url.split("/")[-1]
     content = md(str(main), heading_style="ATX")
-    content = re.sub(r'\n{3,}', '\n\n', content)
+    content = re.sub(r"\n{3,}", "\n\n", content)
 
-    data = {"url": url, "title": title, "content": content, "ts": datetime.now().isoformat()}
+    data = {
+        "url": url,
+        "title": title,
+        "content": content,
+        "ts": datetime.now().isoformat(),
+    }
     cp.write_text(json.dumps(data, indent=2))
     data["cached"] = False
     return data
@@ -194,12 +226,14 @@ async def search_nvidia_docs(query: str, topics: Optional[list[str]] = None) -> 
         if query_lower in content.lower():
             paras = [p for p in content.split("\n\n") if query_lower in p.lower()]
             if paras:
-                results.append({
-                    "src": src["name"],
-                    "title": data.get("title", page_path),
-                    "url": url,
-                    "matches": paras[:2]
-                })
+                results.append(
+                    {
+                        "src": src["name"],
+                        "title": data.get("title", page_path),
+                        "url": url,
+                        "matches": paras[:2],
+                    }
+                )
 
     if not results:
         return f"No results found for '{query}'"
@@ -240,7 +274,9 @@ async def list_nvidia_docs() -> str:
     out.append('fetch_nvidia_docs("connectx7", "/Troubleshooting") # Specific page')
     out.append('fetch_nvidia_docs("rdma", "/RDMA+Verbs+API")       # RDMA API')
     out.append('search_nvidia_docs("kernel bypass")               # Search all')
-    out.append('search_nvidia_docs("QP state", ["rdma", "vma"])   # Search specific topics')
+    out.append(
+        'search_nvidia_docs("QP state", ["rdma", "vma"])   # Search specific topics'
+    )
     out.append("```")
 
     return "\n".join(out)
