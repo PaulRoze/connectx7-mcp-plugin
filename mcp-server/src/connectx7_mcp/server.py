@@ -3,6 +3,7 @@ ConnectX-7 MCP Server
 Fetches and searches NVIDIA ConnectX-7, DOCA, VMA, and RDMA documentation.
 """
 
+import asyncio
 import json
 import hashlib
 import re
@@ -14,10 +15,11 @@ import httpx
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 
 mcp = FastMCP(
     "connectx7-docs",
-    instructions="NVIDIA ConnectX-7, DOCA, VMA, RDMA documentation and reference tools"
+    instructions="NVIDIA ConnectX-7, DOCA, VMA, RDMA documentation and reference tools",
 )
 
 CACHE_DIR = Path.home() / ".cache" / "connectx7-mcp"
@@ -30,51 +32,70 @@ DOC_SOURCES = {
         "base": "https://docs.nvidia.com/networking/display/connectx7vpi",
         "name": "ConnectX-7 User Manual",
         "pages": [
-            "", "/introduction", "/hardwareinstallation", "/driverinstallation",
-            "/firmwareupdate", "/portconfiguration", "/troubleshooting",
-            "/specifications", "/performancetuning"
-        ]
+            "",
+            "/introduction",
+            "/hardwareinstallation",
+            "/driverinstallation",
+            "/firmwareupdate",
+            "/portconfiguration",
+            "/troubleshooting",
+            "/specifications",
+            "/performancetuning",
+        ],
     },
     "doca": {
         "base": "https://docs.nvidia.com/doca/sdk",
         "name": "DOCA SDK",
         "pages": [
-            "", "/doca-overview/index.html",
+            "",
+            "/doca-overview/index.html",
             "/doca-installation-guide-for-linux/index.html",
-            "/rdma-over-converged-ethernet/index.html"
-        ]
+            "/rdma-over-converged-ethernet/index.html",
+        ],
     },
     "vma": {
         "base": "https://docs.nvidia.com/networking/display/vmav9880",
         "name": "VMA User Manual v9.8.80",
         "pages": [
-            "", "/introduction+to+vma", "/installing-vma", "/vma+configuration",
-            "/vma+extra+api", "/performance+tuning", "/troubleshooting"
-        ]
+            "",
+            "/introduction+to+vma",
+            "/installing-vma",
+            "/vma+configuration",
+            "/vma+extra+api",
+            "/performance+tuning",
+            "/troubleshooting",
+        ],
     },
     "rdma": {
         "base": "https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17",
         "name": "RDMA Programming Guide",
         "pages": [
-            "", "/rdma-aware+programming+overview",
-            "/rdma+verbs+api", "/programming+examples+using+ibv+verbs"
-        ]
+            "",
+            "/rdma-aware+programming+overview",
+            "/rdma+verbs+api",
+            "/programming+examples+using+ibv+verbs",
+        ],
     },
     "mlnx_ofed": {
         "base": "https://docs.nvidia.com/networking/display/mlnxofedv24100700",
         "name": "MLNX_OFED Documentation",
-        "pages": ["", "/introduction", "/installation", "/performance+tuning"]
+        "pages": ["", "/introduction", "/installation", "/performance+tuning"],
     },
     "mlx5_kernel": {
         "base": "https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5",
         "name": "mlx5 Kernel Driver",
-        "pages": ["/index.html", "/kconfig.html", "/tracepoints.html", "/counters.html"]
+        "pages": [
+            "/index.html",
+            "/kconfig.html",
+            "/tracepoints.html",
+            "/counters.html",
+        ],
     },
     "dpdk_mlx5": {
         "base": "https://doc.dpdk.org/guides/nics",
         "name": "DPDK mlx5 Driver",
-        "pages": ["/mlx5.html"]
-    }
+        "pages": ["/mlx5.html"],
+    },
 }
 
 
@@ -87,7 +108,9 @@ def cache_valid(path: Path) -> bool:
         return False
     try:
         data = json.loads(path.read_text())
-        return datetime.now() - datetime.fromisoformat(data["ts"]) < timedelta(hours=CACHE_HOURS)
+        return datetime.now() - datetime.fromisoformat(data["ts"]) < timedelta(
+            hours=CACHE_HOURS
+        )
     except (json.JSONDecodeError, KeyError, ValueError, OSError):
         return False
 
@@ -103,22 +126,33 @@ async def fetch(url: str, refresh: bool = False) -> dict:
         try:
             r = await client.get(url, headers={"User-Agent": "ConnectX7-MCP/1.0"})
             r.raise_for_status()
-        except Exception as e:
+        except (httpx.HTTPError, OSError) as e:
             return {"error": str(e)}
 
     soup = BeautifulSoup(r.text, "html.parser")
     for tag in soup(["nav", "header", "footer", "script", "style", "aside"]):
         tag.decompose()
 
-    main = soup.find("main") or soup.find("article") or soup.find(class_="content") or soup.find(id="content") or soup.body
+    main = (
+        soup.find("main")
+        or soup.find("article")
+        or soup.find(class_="content")
+        or soup.find(id="content")
+        or soup.body
+    )
     if not main:
         return {"error": "No content found"}
 
-    title = soup.title.string if soup.title else url.split("/")[-1]
+    title = soup.title.get_text() if soup.title else url.split("/")[-1]
     content = md(str(main), heading_style="ATX")
-    content = re.sub(r'\n{3,}', '\n\n', content)
+    content = re.sub(r"\n{3,}", "\n\n", content)
 
-    data = {"url": url, "title": title, "content": content, "ts": datetime.now().isoformat()}
+    data = {
+        "url": url,
+        "title": title,
+        "content": content,
+        "ts": datetime.now().isoformat(),
+    }
     cp.write_text(json.dumps(data, indent=2))
     data["cached"] = False
     return data
@@ -140,14 +174,14 @@ async def fetch_nvidia_docs(topic: str, page: str = "", refresh: bool = False) -
     topic = topic.lower().replace("-", "_").replace(" ", "_")
     if topic not in DOC_SOURCES:
         available = ", ".join(DOC_SOURCES.keys())
-        return f"Unknown topic '{topic}'. Available: {available}"
+        raise ToolError(f"Unknown topic '{topic}'. Available: {available}")
 
     src = DOC_SOURCES[topic]
     url = f"{src['base']}{page}"
     result = await fetch(url, refresh)
 
     if "error" in result:
-        return f"Error fetching {url}: {result['error']}"
+        raise ToolError(f"Error fetching {url}: {result['error']}")
 
     status = "cached" if result.get("cached") else "fresh"
     return f"# {result['title']}\n\nSource: {url} ({status})\n\n{result['content']}"
@@ -172,25 +206,34 @@ async def search_nvidia_docs(query: str, topics: Optional[list[str]] = None) -> 
     query_lower = query.lower()
     results = []
 
+    # Build list of all (topic, page_path, url) to fetch concurrently
+    fetch_tasks = []
     for topic in topics:
         if topic not in DOC_SOURCES:
             continue
         src = DOC_SOURCES[topic]
         for page_path in src["pages"]:
             url = f"{src['base']}{page_path}"
-            data = await fetch(url)
-            if "error" in data:
-                continue
-            content = data.get("content", "")
-            if query_lower in content.lower():
-                paras = [p for p in content.split("\n\n") if query_lower in p.lower()]
-                if paras:
-                    results.append({
+            fetch_tasks.append((src, page_path, url, fetch(url)))
+
+    # Fetch all pages concurrently
+    fetched = await asyncio.gather(*(t[3] for t in fetch_tasks), return_exceptions=True)
+
+    for (src, page_path, url, _), data in zip(fetch_tasks, fetched):
+        if isinstance(data, Exception) or "error" in data:
+            continue
+        content = data.get("content", "")
+        if query_lower in content.lower():
+            paras = [p for p in content.split("\n\n") if query_lower in p.lower()]
+            if paras:
+                results.append(
+                    {
                         "src": src["name"],
                         "title": data.get("title", page_path),
                         "url": url,
-                        "matches": paras[:2]
-                    })
+                        "matches": paras[:2],
+                    }
+                )
 
     if not results:
         return f"No results found for '{query}'"
@@ -219,7 +262,10 @@ async def list_nvidia_docs() -> str:
     for topic, src in DOC_SOURCES.items():
         out.append(f"## {src['name']} (`{topic}`)")
         out.append(f"Base URL: {src['base']}")
-        out.append(f"Pages: {len(src['pages'])}")
+        out.append(f"Pages ({len(src['pages'])}):")
+        for page in src["pages"]:
+            label = page if page else "(main page)"
+            out.append(f"  - `{label}`")
         out.append("")
 
     out.append("## Usage Examples")
@@ -228,7 +274,9 @@ async def list_nvidia_docs() -> str:
     out.append('fetch_nvidia_docs("connectx7", "/Troubleshooting") # Specific page')
     out.append('fetch_nvidia_docs("rdma", "/RDMA+Verbs+API")       # RDMA API')
     out.append('search_nvidia_docs("kernel bypass")               # Search all')
-    out.append('search_nvidia_docs("QP state", ["rdma", "vma"])   # Search specific topics')
+    out.append(
+        'search_nvidia_docs("QP state", ["rdma", "vma"])   # Search specific topics'
+    )
     out.append("```")
 
     return "\n".join(out)
@@ -258,14 +306,14 @@ def get_official_links() -> str:
 
 ## Primary Documentation
 - **ConnectX-7 User Manual**: https://docs.nvidia.com/networking/display/connectx7vpi
-- **DOCA SDK**: https://docs.nvidia.com/doca/sdk/
-- **VMA User Manual**: https://docs.nvidia.com/networking/display/VMAv98/
-- **RDMA Programming Guide**: https://docs.nvidia.com/networking/display/RDMAAwareProgrammingv17/
+- **DOCA SDK**: https://docs.nvidia.com/doca/sdk
+- **VMA User Manual v9.8.80**: https://docs.nvidia.com/networking/display/vmav9880
+- **RDMA Programming Guide**: https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17
 
 ## Driver Documentation
-- **mlx5 Kernel Driver**: https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5/
-- **DPDK mlx5 Driver**: https://doc.dpdk.org/guides/platform/mlx5.html
-- **MLNX_OFED**: https://docs.nvidia.com/networking/display/MLNXOFEDv24100700/
+- **mlx5 Kernel Driver**: https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5
+- **DPDK mlx5 Driver**: https://doc.dpdk.org/guides/nics/mlx5.html
+- **MLNX_OFED**: https://docs.nvidia.com/networking/display/mlnxofedv24100700
 
 ## Downloads & Tools
 - **DOCA Downloads**: https://developer.nvidia.com/networking/doca

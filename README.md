@@ -50,9 +50,11 @@ A comprehensive Claude Code plugin providing skills, documentation tools, and re
 
 ### Local Development
 
+**Requires:** Python >= 3.10
+
 ```bash
 git clone https://github.com/PaulRoze/connectx7-mcp-plugin.git
-cd connectx7-marketplace
+cd connectx7-mcp-plugin
 
 # Install MCP server (in virtual environment)
 cd mcp-server
@@ -116,7 +118,7 @@ Just mention these in conversation:
 
 ## Updating
 
-Push changes to GitLab. Teammates get updates on Claude Code restart.
+Push changes to GitHub. Teammates get updates on Claude Code restart.
 
 ```bash
 git add .

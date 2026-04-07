@@ -1,6 +1,7 @@
 ---
 name: connectx7-performance
 description: "ConnectX-7 performance tuning and profiling. Use when optimizing latency, throughput, or debugging performance issues. Covers NUMA, IRQ affinity, ring buffers, PCIe settings, and profiling tools."
+last_verified: 2025-01-15
 ---
 
 # ConnectX-7 Performance Tuning
@@ -160,30 +161,11 @@ mlxconfig -d /dev/mst/mt4129_pciconf0 set MAX_ACC_OUT_READ=44
 
 ## Flow Steering Mode
 
-```bash
-# Check current mode
-devlink dev param show pci/0000:08:00.0 name flow_steering_mode
-
-# smfs is faster for high rule insertion rates
-devlink dev param set pci/0000:08:00.0 name flow_steering_mode value smfs cmode runtime
-```
+**See [`connectx7-mlx5-driver`] for flow steering mode details (dmfs vs smfs) and configuration commands.**
 
 ## VMA-Specific Tuning
 
-```bash
-# Latency-optimized
-export VMA_SPEC=latency
-export VMA_RX_POLL=100000
-export VMA_SELECT_POLL=100000
-export VMA_THREAD_MODE=0
-export VMA_RX_BUFS=200000
-export VMA_TX_BUFS=200000
-export VMA_MEM_ALLOC_TYPE=2  # Huge pages
-export VMA_IGMP_ENABLE=1
-
-# Run with VMA
-LD_PRELOAD=/usr/lib64/libvma.so ./your_app
-```
+**See [`connectx7-vma`] for the complete VMA environment variable reference and loading methods.**
 
 ## Profiling Tools
 

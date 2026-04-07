@@ -1,6 +1,7 @@
 ---
 name: connectx7-troubleshooting
 description: "ConnectX-7 troubleshooting, error codes, and diagnostics. Use when debugging driver issues, firmware problems, link failures, performance issues, or VMA errors. Covers dmesg patterns, health monitoring, and common fixes."
+last_verified: 2025-01-15
 ---
 
 # ConnectX-7 Troubleshooting Guide
@@ -145,37 +146,7 @@ reboot
 
 ## Performance Issues
 
-### Check NUMA First
-
-```bash
-# NIC NUMA node
-cat /sys/class/net/eth0/device/numa_node
-
-# Process NUMA
-numactl --show
-
-# Fix: run on same NUMA node
-numactl --cpunodebind=0 --membind=0 ./your_app
-```
-
-### Check PCIe Link
-
-```bash
-lspci -vvv -s $(lspci | grep Mellanox | awk '{print $1}') | grep -E "LnkCap|LnkSta"
-
-# Should see:
-# LnkCap: Speed 32GT/s, Width x16
-# LnkSta: Speed 32GT/s, Width x16
-
-# If Width is x8: reseat card, try different slot
-```
-
-### Check for Drops
-
-```bash
-ethtool -S eth0 | grep -E "drop|error|overflow"
-cat /sys/class/infiniband/mlx5_0/ports/1/counters/port_rcv_errors
-```
+**See [`connectx7-performance`] for complete NUMA configuration, PCIe link diagnostics, and drop/error counter checks.**
 
 ## VMA Troubleshooting
 

@@ -1,6 +1,7 @@
 ---
 name: connectx7-vma
 description: "VMA (Messaging Accelerator) kernel bypass API reference. Use when implementing VMA in code, loading libvma dynamically, or configuring VMA environment variables for high-performance networking."
+last_verified: 2025-01-15
 ---
 
 # VMA Kernel Bypass API
@@ -33,6 +34,7 @@ typedef struct {
     int (*socket)(int, int, int);
     int (*bind)(int, sockaddr*, int);
     int (*setsockopt)(int, int, int, void*, int);
+    int (*getsockopt)(int sockfd, int level, int optname, void *optval, socklen_t *optlen);
     int (*close)(int);
     int (*epoll_create)(int);
     int (*epoll_ctl)(int, int, int, struct epoll_event*);
@@ -60,6 +62,7 @@ int LoadVmaSharedLibrary(vma_t *pVma, bool use_simulation)
         *(void **)&pVma->socket = dlsym(RTLD_DEFAULT, "socket");
         *(void **)&pVma->bind = dlsym(RTLD_DEFAULT, "bind");
         *(void **)&pVma->recv = dlsym(RTLD_DEFAULT, "recv");
+        *(void **)&pVma->getsockopt = dlsym(RTLD_DEFAULT, "getsockopt");
         // ... other functions
         pVma->SimulatedApi = true;
         return 0;
@@ -69,6 +72,7 @@ int LoadVmaSharedLibrary(vma_t *pVma, bool use_simulation)
     *(void **)&pVma->socket = dlsym(VmaHandle, "socket");
     *(void **)&pVma->bind = dlsym(VmaHandle, "bind");
     *(void **)&pVma->recv = dlsym(VmaHandle, "recv");
+    *(void **)&pVma->getsockopt = dlsym(VmaHandle, "getsockopt");
     // ... other functions
 
     // Get VMA extended API

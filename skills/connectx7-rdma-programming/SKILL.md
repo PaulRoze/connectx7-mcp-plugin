@@ -1,6 +1,7 @@
 ---
 name: connectx7-rdma-programming
 description: "RDMA/InfiniBand Verbs programming with libibverbs. Use when writing RDMA code, implementing ibv_post_send/ibv_poll_cq, creating QPs, registering memory regions, or building high-performance networking applications."
+last_verified: 2025-01-15
 ---
 
 # RDMA Verbs Programming Guide
@@ -224,15 +225,7 @@ for (int i = 0; i < n; i++) {
 
 ## Work Completion Status Codes
 
-| Status | Meaning |
-|--------|---------|
-| `IBV_WC_SUCCESS` | Completed successfully |
-| `IBV_WC_LOC_LEN_ERR` | Local length error |
-| `IBV_WC_LOC_PROT_ERR` | Local protection error (MR issue) |
-| `IBV_WC_WR_FLUSH_ERR` | QP in error state, WRs flushed |
-| `IBV_WC_REM_ACCESS_ERR` | Remote access error (wrong rkey/permissions) |
-| `IBV_WC_RNR_RETRY_EXC_ERR` | RNR retry exceeded (receiver not ready) |
-| `IBV_WC_RETRY_EXC_ERR` | Transport retry exceeded (timeout) |
+**See [`connectx7-troubleshooting`] for the complete RDMA work completion error code reference (includes numeric codes, meanings, and common causes).**
 
 ## Using RDMA-CM (Simplified Connection)
 

@@ -1,6 +1,7 @@
 ---
 name: connectx7-mlx5-driver
 description: "mlx5 kernel driver internals, debugging, and tracepoints. Use when debugging driver issues, understanding mlx5 architecture, reading kernel logs, or when teammate needs to understand driver behavior without reverse engineering."
+last_verified: 2025-01-15
 ---
 
 # mlx5 Kernel Driver Reference
@@ -180,27 +181,11 @@ journalctl -k | grep -i mlx5
 
 ### Common Error Patterns
 
-| Log Pattern | Meaning | Fix |
-|-------------|---------|-----|
-| `mlx5_core: firmware error` | FW crashed | Update firmware, cold reboot |
-| `mlx5_core: cmd timeout` | FW not responding | Check PCIe, reboot |
-| `mlx5_ib: CQ overrun` | CQ too small | Increase CQ size |
-| `mlx5_core: health error` | HW health check failed | Check `devlink health` |
-| `mlx5_core: out of resources` | HW resource exhaustion | Reduce QPs/MRs |
+**See [`connectx7-troubleshooting`] for the complete kernel error code reference table.**
 
 ### Health Monitoring
 
-```bash
-# Check health status
-devlink health show pci/0000:08:00.0
-
-# Diagnose specific reporter
-devlink health diagnose pci/0000:08:00.0 reporter fw
-devlink health diagnose pci/0000:08:00.0 reporter fw_fatal
-
-# Dump health info
-devlink health dump show pci/0000:08:00.0 reporter fw
-```
+**See [`connectx7-troubleshooting`] for complete health monitoring commands and reporter state reference.**
 
 ## Module Parameters
 
