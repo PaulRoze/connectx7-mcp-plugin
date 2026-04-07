@@ -1,5 +1,7 @@
 # ConnectX-7 Development Plugin
 
+[![CI](https://github.com/PaulRoze/connectx7-mcp-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/PaulRoze/connectx7-mcp-plugin/actions/workflows/ci.yml)
+
 **The source of truth for NVIDIA ConnectX-7 driver development** - so your team doesn't have to reverse engineer the driver.
 
 A comprehensive Claude Code plugin providing skills, documentation tools, and references for ConnectX-7, DOCA, VMA, and RDMA development. Designed for broadcast/media teams working with ST 2110 and high-performance networking.
@@ -60,7 +62,10 @@ cd connectx7-mcp-plugin
 cd mcp-server
 python3 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e .
+pip install -e ".[dev]"
+
+# Run tests
+pytest tests/ -v
 ```
 
 Add to `~/.claude/settings.json`:
@@ -77,13 +82,7 @@ Add to `~/.claude/settings.json`:
 
 ### Verify Installation
 
-Check that skills appear:
-
-```bash
-/help
-```
-
-Should see skills like `connectx7-development`, `connectx7-vma`, etc.
+Skills should appear when relevant keywords are mentioned in conversation (e.g., "ConnectX", "VMA", "RDMA").
 
 ## Usage Examples
 
