@@ -1,6 +1,6 @@
 {
   "name": "connectx7-mcp-plugin",
-  "description": "ConnectX-7/DOCA/VMA development tools for broadcast/media teams",
+  "description": "ConnectX-7 / DOCA / RDMA development skills for broadcast and media teams",
   "owner": {
     "name": "Pavel Rozentsvet",
     "email": "111685920+PaulRoze@users.noreply.github.com"
@@ -8,13 +8,8 @@
   "plugins": [
     {
       "name": "connectx7-development",
-      "description": "NVIDIA ConnectX-7, DOCA, VMA kernel bypass development for broadcast/media and ST 2110",
-      "version": "1.0.2",
-      "source": "./",
-      "author": {
-        "name": "Pavel Rozentsvet",
-        "email": "111685920+PaulRoze@users.noreply.github.com"
-      }
+      "description": "NVIDIA ConnectX-7, DOCA, RDMA, VMA/XLIO and ST 2110 development skills",
+      "source": "./"
     }
   ]
 }

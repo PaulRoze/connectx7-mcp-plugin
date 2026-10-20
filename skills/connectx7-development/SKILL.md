@@ -1,63 +1,52 @@
 ---
 name: connectx7-development
-description: "ConnectX-7, DOCA, VMA kernel bypass development reference. Use when working with Mellanox/NVIDIA networking, RDMA, kernel bypass, ST 2110, or high-performance UDP/multicast. Triggers on: ConnectX, DOCA, VMA, libvma, MLNX_OFED, mlx5, RoCE, InfiniBand, SMPTE ST 2110."
-last_verified: 2025-01-15
+description: "ConnectX-7 setup and stack choice: DOCA-Host / MLNX_OFED install and upgrade, firmware, card identification, and which stack to use for broadcast (Rivermax for SMPTE ST 2110, XLIO or VMA for socket acceleration, PTP/ST 2059 timing). Use when installing or upgrading NVIDIA networking software, choosing a kernel-bypass stack, or starting ST 2110 work on ConnectX. Triggers: DOCA, MLNX_OFED, Rivermax, XLIO, ST 2110, ST 2059, PTP."
 ---
 
 # ConnectX-7 & DOCA Development Reference
 
-## Driver Stack (2025+)
+> Written against DOCA 3.x. For anything version-specific (package and profile names, firmware minimums, mlxconfig parameters, library versions), WebFetch the primary source before answering.
+> Start with the [DOCA-Host install page](https://networking-docs.nvidia.com/doca/archive/3-5-0/doca-host-installation-and-upgrade) and [references/sources.md](references/sources.md). Ask the user for `ofed_info -s`, `ethtool -i <iface>`, `uname -r`.
 
-| Package | Status | Use Case |
-|---------|--------|----------|
-| **DOCA-OFED** | Current | Production - replaces MLNX_OFED |
-| **MLNX_OFED** | LTS until Oct 2027 | Legacy systems only |
-| **doca-libvma** | Current | Kernel bypass for UDP/TCP |
+## Driver Stack
 
-## Quick Install (Rocky/RHEL 8+)
+- **DOCA-Host** is the current driver and software package. MLNX_OFED transitioned into DOCA-Host; 24.10 is the last MLNX_OFED release (legacy systems only).
+- VMA and XLIO ship as DOCA-Host profiles (`doca-libvma`, `doca-libxlio`).
 
-```bash
-cat > /etc/yum.repos.d/doca.repo << 'EOF'
-[doca]
-name=DOCA Online Repo
-baseurl=https://linux.mellanox.com/public/repo/doca/2.9.1/rhel8.9/x86_64/
-enabled=1
-gpgcheck=0
-EOF
+## Install
 
-dnf -y install doca-ofed doca-libvma
-reboot
-```
+Follow the [DOCA-Host install page](https://networking-docs.nvidia.com/doca/archive/3-5-0/doca-host-installation-and-upgrade) for your OS: add the DOCA repo it gives you (keep GPG checking on), then install a profile. Profiles named on that page: `doca-all`, `doca-ofed`, `doca-ofed-userspace`, `doca-libvma`, `doca-libxlio`. Supported profiles differ per OS, so check its supported-OS table.
 
 ## Card Models
 
-| Model | Ports | Speed | Use Case |
-|-------|-------|-------|----------|
-| MCX713106AS-VEA | 2 | 100G | 4K60 ST 2110 |
-| MCX753106AS-HEA | 2 | 200G | 8K / multi-4K |
-| MCX75310AAS-NEA | 1 | 200G | NDR100 InfiniBand |
+See the [ConnectX-7 hardware manual](https://networking-docs.nvidia.com/connectx7hw) for ordering part numbers, ports and speeds.
 
 ## Firmware
 
-- **Minimum for DOCA 3.x**: 28.43.1000
+- **Minimum for your DOCA version**: check the firmware release notes
 - **Check**: `mlxfwmanager --query`
-- **Update**: `mlxfwmanager --update`
+- **Update**: `mlxfwmanager --update` (check the PSID matches the card first; do not interrupt; some changes need `mlxfwreset` or a reboot)
+
+## ST 2110 stack
+
+- ST 2110 on ConnectX-7 = [NVIDIA Rivermax](https://developer.nvidia.com/networking/rivermax). It uses the NIC's hardware packet pacing, which ST 2110-21 needs.
+- VMA (libvma, latest 9.8.84, 2026-01) and XLIO ([libxlio](https://github.com/Mellanox/libxlio), latest stable 3.71.2, 2026-08-21; `gh api repos/Mellanox/libxlio/releases`, excluding prereleases) are generic socket accelerators, not ST 2110 stacks. XLIO is the newer of the two.
+- PTP / ST 2059: run `ptp4l` + `phc2sys` against the NIC's PHC. `ethtool -T <if>` shows the PHC index and timestamping capabilities.
+- ConnectX-7 real-time clock: `mlxconfig -d <dev> set REAL_TIME_CLOCK_ENABLE=1` (name taken from the [DPDK mlx5 guide](https://doc.dpdk.org/guides/nics/mlx5.html); persistent, query first with `mlxconfig -d <dev> q`, takes effect after `mlxfwreset` or reboot). See Rivermax docs for any other required firmware clock settings.
 
 ## Related Skills
 
-- **VMA API details** → `connectx7-vma`
-- **RDMA programming** → `connectx7-rdma-programming`
-- **Performance tuning** → `connectx7-performance`
-- **Troubleshooting** → `connectx7-troubleshooting`
-- **Kernel driver internals** → `connectx7-mlx5-driver`
-
-## Live Documentation (MCP Tools)
-
-Use `fetch_nvidia_docs` and `search_nvidia_docs` for latest online docs.
+- **libvma** → `connectx7-vma`
+- **Verbs code** → `connectx7-rdma-programming`
+- **Tuning** → `connectx7-performance`
+- **Symptom triage** → `connectx7-troubleshooting`
+- **Internals, source, tracepoints** → `connectx7-mlx5-driver`
 
 ## Online Resources
 
-For latest documentation, fetch from:
+- [DOCA-Host install](https://networking-docs.nvidia.com/doca/archive/3-5-0/doca-host-installation-and-upgrade)
 - [DOCA SDK](https://docs.nvidia.com/doca/sdk/)
-- [ConnectX-7 Manual](https://docs.nvidia.com/networking/display/ConnectX7VPI/)
-- [VMA Documentation](https://docs.nvidia.com/networking/display/vmav9880/)
+- [ConnectX-7 hardware manual](https://networking-docs.nvidia.com/connectx7hw)
+- [MLNX_OFED 24.10](https://networking-docs.nvidia.com/mlnxofedswum/24100700)
+- [VMA 9.8.84](https://networking-docs.nvidia.com/vmaswum/9884)
+- [Rivermax](https://developer.nvidia.com/networking/rivermax)

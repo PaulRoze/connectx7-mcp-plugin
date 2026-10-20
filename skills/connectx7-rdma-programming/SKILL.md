@@ -1,10 +1,16 @@
 ---
 name: connectx7-rdma-programming
-description: "RDMA/InfiniBand Verbs programming with libibverbs. Use when writing RDMA code, implementing ibv_post_send/ibv_poll_cq, creating QPs, registering memory regions, or building high-performance networking applications."
-last_verified: 2025-01-15
+description: "RDMA verbs programming with libibverbs and rdma-cm on ConnectX: protection domains, memory registration, QP creation and state transitions, posting work requests, polling completions, RoCE addressing. Use when writing or reviewing RDMA application code. Not for driver internals (see connectx7-mlx5-driver)."
 ---
 
 # RDMA Verbs Programming Guide
+
+> Written against rdma-core 5x (libibverbs) on Linux 6.x mlx5 / DOCA 3.x. For anything version-specific
+> (verbs.h signatures, enums, mlx5dv extensions, provider limits), WebFetch the primary source before answering:
+> https://github.com/linux-rdma/rdma-core and https://networking-docs.nvidia.com/rdmaawareprogramming.
+> Ask for `ofed_info -s`, `ethtool -i`, `uname -r`. Full list: ../connectx7-development/references/sources.md
+
+Canonical complete example: `libibverbs/examples/rc_pingpong.c` in rdma-core. mlx5-specific extensions: `providers/mlx5/mlx5dv.h` and `man mlx5dv`.
 
 ## Core Concepts
 
@@ -99,15 +105,20 @@ ibv_modify_qp(qp, &attr,
 
 // INIT -> RTR (Ready to Receive)
 attr.qp_state = IBV_QPS_RTR;
-attr.path_mtu = IBV_MTU_4096;
+attr.path_mtu = IBV_MTU_4096;     // must be <= active_mtu from ibv_query_port()
 attr.dest_qp_num = remote_qpn;      // From remote side
 attr.rq_psn = 0;
 attr.max_dest_rd_atomic = 1;
 attr.min_rnr_timer = 12;
-attr.ah_attr.dlid = remote_lid;     // For IB
+attr.ah_attr.dlid = remote_lid;     // IB only; ignored on RoCE
 attr.ah_attr.sl = 0;
 attr.ah_attr.port_num = 1;
-// For RoCE: set ah_attr.grh fields instead
+// RoCE requires the GRH fields. gid_index comes from ibv_query_gid_ex()
+// or sysfs /sys/class/infiniband/<dev>/ports/<n>/gid_attrs/ (pick the RoCE v2 entry)
+attr.ah_attr.is_global = 1;
+attr.ah_attr.grh.dgid = remote_gid;
+attr.ah_attr.grh.sgid_index = gid_index;
+attr.ah_attr.grh.hop_limit = 1;
 ibv_modify_qp(qp, &attr,
     IBV_QP_STATE | IBV_QP_PATH_MTU | IBV_QP_DEST_QPN |
     IBV_QP_RQ_PSN | IBV_QP_MAX_DEST_RD_ATOMIC |
@@ -118,7 +129,7 @@ attr.qp_state = IBV_QPS_RTS;
 attr.sq_psn = 0;
 attr.timeout = 14;
 attr.retry_cnt = 7;
-attr.rnr_retry = 7;
+attr.rnr_retry = 7;           // 7 = retry forever on RNR NAK
 attr.max_rd_atomic = 1;
 ibv_modify_qp(qp, &attr,
     IBV_QP_STATE | IBV_QP_SQ_PSN | IBV_QP_TIMEOUT |
@@ -194,8 +205,13 @@ ibv_post_recv(qp, &wr, &bad_wr);
 struct ibv_wc wc;
 
 // Busy polling (lowest latency)
-while (ibv_poll_cq(cq, 1, &wc) == 0) {
+int n;
+while ((n = ibv_poll_cq(cq, 1, &wc)) == 0) {
     // Spin
+}
+if (n < 0) {
+    fprintf(stderr, "ibv_poll_cq failed: %d\n", n);
+    // handle error
 }
 
 if (wc.status != IBV_WC_SUCCESS) {
@@ -278,6 +294,5 @@ gcc -o rdma_app rdma_app.c -libverbs -lrdmacm -lmlx5
 
 ## Official Resources
 
-- [NVIDIA RDMA Programming Guide](https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17/)
-- [RDMAmojo Tutorial](https://www.rdmamojo.com/)
+- [NVIDIA RDMA-Aware Programming Manual](https://networking-docs.nvidia.com/rdmaawareprogramming)
 - [rdma-core GitHub](https://github.com/linux-rdma/rdma-core)

@@ -1,10 +1,12 @@
 ---
 name: connectx7-troubleshooting
-description: "ConnectX-7 troubleshooting, error codes, and diagnostics. Use when debugging driver issues, firmware problems, link failures, performance issues, or VMA errors. Covers dmesg patterns, health monitoring, and common fixes."
-last_verified: 2025-01-15
+description: "ConnectX-7 symptom triage: link down, firmware or health errors, RDMA work-completion errors, dmesg messages, devlink health reports. Use when something is broken or failing on a ConnectX NIC and you need to find the cause. Not for throughput or latency tuning (see connectx7-performance)."
 ---
 
 # ConnectX-7 Troubleshooting Guide
+
+> Written against DOCA 3.x / rdma-core 5x / Linux 6.x mlx5. For anything version-specific (dmesg strings, devlink reporters, MFT tool options, firmware versions, VMA env vars), WebFetch the primary source before answering: https://www.kernel.org/doc/html/latest/networking/devlink/mlx5.html and https://networking-docs.nvidia.com/mftswum/4300.
+> Ask the user for `ofed_info -s`, `ethtool -i <iface>`, `uname -r` first. Full list: ../connectx7-development/references/sources.md
 
 ## Quick Diagnostic Commands
 
@@ -27,20 +29,21 @@ dmesg | grep -i "mlx5.*error\|mlx5.*fail"
 
 ## Error Code Reference
 
-### Kernel (dmesg) Errors
+### Kernel (dmesg) Messages
 
-| Pattern | Meaning | Fix |
-|---------|---------|-----|
-| `mlx5_core: firmware error` | Firmware crashed | Update FW, cold reboot |
-| `mlx5_core: cmd timeout` | FW not responding | Check PCIe, power cycle |
-| `mlx5_core: health error` | HW health failed | Run `devlink health diagnose` |
-| `mlx5_core: out of resources` | HW resource exhausted | Reduce QPs/MRs/CQs |
-| `mlx5_ib: CQ overrun` | CQ too small | Increase CQ size |
-| `mlx5_core: command failed, status bad resource state` | Resource in wrong state | Check QP state transitions |
-| `mlx5_core: exec cmd failed` | Generic command failure | Check dmesg for details |
-| `mlx5_core: Port module event: Error` | Transceiver issue | Check cable/SFP |
+Real strings from `drivers/net/ethernet/mellanox/mlx5/core`:
+
+| Pattern | Meaning |
+|---------|---------|
+| `device's health compromised - reached miss count` | FW stopped answering the health poll; check `devlink health`, PCIe, power |
+| `<CMD>(0x..) op_mod(0x..) failed, status ..., syndrome (0x..)` | FW rejected a command; the syndrome identifies the cause |
+| `<CMD>(0x..) timeout. Will cause a leak of a command resource` | FW command timed out |
+| `Port module event[error]: module N, ...` | Transceiver problem; check cable/module |
+| `TX timeout detected` | Netdev TX watchdog fired; see `tx` health reporter |
 
 ### RDMA Work Completion Errors
+
+Codes are the `enum ibv_wc_status` values in rdma-core `libibverbs/verbs.h`.
 
 | Status | Code | Meaning | Common Cause |
 |--------|------|---------|--------------|
@@ -49,22 +52,21 @@ dmesg | grep -i "mlx5.*error\|mlx5.*fail"
 | `IBV_WC_LOC_PROT_ERR` | 4 | Local protection error | Wrong MR permissions/lkey |
 | `IBV_WC_WR_FLUSH_ERR` | 5 | WR flushed | QP moved to error state |
 | `IBV_WC_MW_BIND_ERR` | 6 | Memory window bind error | MW configuration issue |
+| `IBV_WC_REM_INV_REQ_ERR` | 9 | Remote invalid request | Unsupported operation |
 | `IBV_WC_REM_ACCESS_ERR` | 10 | Remote access error | Wrong rkey or remote MR permissions |
-| `IBV_WC_REM_INV_REQ_ERR` | 11 | Remote invalid request | Unsupported operation |
-| `IBV_WC_REM_OP_ERR` | 12 | Remote operation error | Remote QP issue |
-| `IBV_WC_RETRY_EXC_ERR` | 13 | Retry exceeded | Network timeout, path MTU |
-| `IBV_WC_RNR_RETRY_EXC_ERR` | 14 | RNR retry exceeded | Receiver not ready (no recv posted) |
-| `IBV_WC_RESP_TIMEOUT_ERR` | 17 | Response timeout | Remote not responding |
+| `IBV_WC_REM_OP_ERR` | 11 | Remote operation error | Remote QP issue |
+| `IBV_WC_RETRY_EXC_ERR` | 12 | Retry exceeded | Network timeout, path MTU |
+| `IBV_WC_RNR_RETRY_EXC_ERR` | 13 | RNR retry exceeded | Receiver not ready (no recv posted) |
+| `IBV_WC_RESP_TIMEOUT_ERR` | 20 | Response timeout | Remote not responding |
 
-### VMA Errors
+### Link diagnosis basics
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `VMA: No supported devices found` | mlx5 driver not loaded | Load `mlx5_core`, `mlx5_ib` |
-| `VMA: Failed to allocate buffer pool` | memlock limit | Set unlimited in limits.conf |
-| `VMA: Ring allocation failed` | Resources exhausted | Reduce `VMA_RX_BUFS` |
-| `VMA: Cannot create socket` | Library not loaded | Check `LD_PRELOAD` path |
-| `VMA: IGMP join failed` | Multicast issue | Set `VMA_IGMP_ENABLE=1` |
+```bash
+mlxlink -d /dev/mst/mt4129_pciconf0   # port state, speed, FEC, cable (needs mst start)
+ethtool -m eth0                       # transceiver EEPROM / DOM
+ethtool --show-fec eth0               # FEC mode
+ethtool -S eth0 | grep _phy           # PHY error counters
+```
 
 ## Link Troubleshooting
 
@@ -104,9 +106,10 @@ devlink health show pci/0000:08:00.0
 
 # Diagnose specific reporter
 devlink health diagnose pci/0000:08:00.0 reporter fw
-devlink health diagnose pci/0000:08:00.0 reporter fw_fatal
+devlink health dump show pci/0000:08:00.0 reporter fw_fatal   # CR-space dump, PF only
+devlink health recover pci/0000:08:00.0 reporter fw_fatal
 
-# Dump health info (for NVIDIA support)
+# Dump FW core dump (for NVIDIA support; PF with fw tracer ownership)
 devlink health dump show pci/0000:08:00.0 reporter fw > health_dump.txt
 ```
 
@@ -117,7 +120,8 @@ devlink health dump show pci/0000:08:00.0 reporter fw > health_dump.txt
 | `fw` healthy | Good | - |
 | `fw` error | FW issue | Check dmesg, update FW |
 | `fw_fatal` error | Critical | Cold reboot, contact support |
-| `vnic` error | VF issue | Check SR-IOV config |
+| `tx` error | TX timeout / SQ error | `devlink health diagnose ... reporter tx` (interface must be up) |
+| `rx` error | RQ population timeout / CQ error | `devlink health diagnose ... reporter rx` (interface must be up) |
 
 ## Firmware Troubleshooting
 
@@ -125,15 +129,14 @@ devlink health dump show pci/0000:08:00.0 reporter fw > health_dump.txt
 # Check version
 mlxfwmanager --query
 
-# Update
-mlxfwmanager --update
-
-# Manual update
+# Manual update (PSID of the card must match the image PSID; never lose power during a burn)
 mst start
+flint -d /dev/mst/mt4129_pciconf0 q                       # note PSID
+flint -i firmware.bin verify                              # image integrity + its PSID
 flint -d /dev/mst/mt4129_pciconf0 -i firmware.bin burn
 
-# ALWAYS reboot after firmware update
-reboot
+# Activate new FW without reboot (or reboot / power cycle if it refuses)
+mlxfwreset -d /dev/mst/mt4129_pciconf0 reset
 ```
 
 ### Firmware Issues
@@ -157,7 +160,7 @@ reboot
 lsof -p $(pgrep your_app) | grep libvma
 
 # Enable VMA debug
-export VMA_TRACELEVEL=3
+export VMA_TRACELEVEL=debug
 export VMA_LOG_FILE=/tmp/vma.log
 LD_PRELOAD=/usr/lib64/libvma.so ./your_app
 
@@ -221,6 +224,8 @@ echo "Archive: ${OUTPUT_DIR}.tar.gz"
 
 ## Official Resources
 
-- [ConnectX-7 Troubleshooting](https://docs.nvidia.com/networking/display/connectx7vpi/troubleshooting)
-- [NVIDIA Networking Forums](https://forums.developer.nvidia.com/c/networking/)
-- [mlx5 Kernel Docs](https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5/)
+- [mlx5 devlink and health reporters](https://www.kernel.org/doc/html/latest/networking/devlink/mlx5.html)
+- [mlx5 Kernel Docs](https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5/index.html)
+- [MFT / mstflint](https://networking-docs.nvidia.com/mftswum/4300)
+- [ConnectX-7 hardware](https://networking-docs.nvidia.com/connectx7hw)
+- [VMA 9.8.84](https://networking-docs.nvidia.com/vmaswum/9884)
