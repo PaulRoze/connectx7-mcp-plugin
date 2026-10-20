@@ -32,11 +32,17 @@ The full list of primary sources is in
 
 ## Updates
 
-Third-party marketplaces don't auto-update by default. To pick up a new release:
+Third-party marketplaces don't auto-update by default. Turn it on once: run `/plugin`, open the
+**Marketplaces** tab, select `connectx7-mcp-plugin`, then **Enable auto-update**.
+
+Or update by hand:
 
 ```bash
 /plugin marketplace update connectx7-mcp-plugin
 ```
+
+Teams can turn auto-update on for everyone with `"autoUpdate": true` on the marketplace's
+`extraKnownMarketplaces` entry in managed settings.
 
 Maintainers: bump `version` in `.claude-plugin/plugin.json` on every release. Installed copies are
 pinned to that string and won't change until it does.
