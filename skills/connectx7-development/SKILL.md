@@ -29,9 +29,9 @@ See the [ConnectX-7 hardware manual](https://networking-docs.nvidia.com/connectx
 
 ## ST 2110 stack
 
-- ST 2110 on ConnectX-7 = [NVIDIA Rivermax](https://developer.nvidia.com/networking/rivermax). It uses the NIC's hardware packet pacing, which ST 2110-21 needs.
+- ST 2110 on ConnectX-7 = [NVIDIA Rivermax](https://developer.nvidia.com/networking/rivermax). It uses the NIC's hardware packet pacing to meet ST 2110-21 (traffic shaping and delivery timing for video).
 - VMA (libvma, latest 9.8.84, 2026-01) and XLIO ([libxlio](https://github.com/Mellanox/libxlio), latest stable 3.71.2, 2026-08-21; `gh api repos/Mellanox/libxlio/releases`, excluding prereleases) are generic socket accelerators, not ST 2110 stacks. XLIO is the newer of the two.
-- PTP / ST 2059: run `ptp4l` + `phc2sys` against the NIC's PHC. `ethtool -T <if>` shows the PHC index and timestamping capabilities.
+- PTP / ST 2059: run `ptp4l -i <if> -H` (hardware timestamping) and `phc2sys -s <if> -c CLOCK_REALTIME` to steer the system clock from the NIC's PHC. `ethtool -T <if>` shows the PHC index and timestamping capabilities.
 - ConnectX-7 real-time clock: `mlxconfig -d <dev> set REAL_TIME_CLOCK_ENABLE=1` (name taken from the [DPDK mlx5 guide](https://doc.dpdk.org/guides/nics/mlx5.html); persistent, query first with `mlxconfig -d <dev> q`, takes effect after `mlxfwreset` or reboot). See Rivermax docs for any other required firmware clock settings.
 
 ## Related Skills

@@ -5,7 +5,7 @@ description: "RDMA verbs programming with libibverbs and rdma-cm on ConnectX: pr
 
 # RDMA Verbs Programming Guide
 
-> Written against rdma-core 5x (libibverbs) on Linux 6.x mlx5 / DOCA 3.x. For anything version-specific
+> Written against rdma-core v65 (libibverbs) on Linux 6.x mlx5 / DOCA 3.x. For anything version-specific
 > (verbs.h signatures, enums, mlx5dv extensions, provider limits), WebFetch the primary source before answering:
 > https://github.com/linux-rdma/rdma-core and https://networking-docs.nvidia.com/rdmaawareprogramming.
 > Ask for `ofed_info -s`, `ethtool -i`, `uname -r`. Full list: ../connectx7-development/references/sources.md
