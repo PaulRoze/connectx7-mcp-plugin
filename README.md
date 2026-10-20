@@ -2,137 +2,56 @@
 
 [![CI](https://github.com/PaulRoze/connectx7-mcp-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/PaulRoze/connectx7-mcp-plugin/actions/workflows/ci.yml)
 
-**The source of truth for NVIDIA ConnectX-7 driver development** - so your team doesn't have to reverse engineer the driver.
+Claude Code skills for NVIDIA ConnectX-7 work: DOCA-Host setup, RDMA verbs, mlx5 driver internals,
+VMA/XLIO, tuning, troubleshooting, and pointers to the ST 2110 stack (Rivermax, PTP).
 
-A comprehensive Claude Code plugin providing skills, documentation tools, and references for ConnectX-7, DOCA, VMA, and RDMA development. Designed for broadcast/media teams working with ST 2110 and high-performance networking.
+The skills are a starting point, not a source of truth. Each one opens with the primary docs to
+check, and tells Claude to fetch them before answering anything version-specific (env var names,
+Kconfig symbols, tracepoints, firmware minimums, package names).
 
-## What's Included
+## Skills
 
-### 6 Skills (Auto-trigger on keywords)
+| Skill | Use it for |
+|-------|-----------|
+| `connectx7-development` | DOCA-Host / MLNX_OFED install, firmware, card identification, choosing a stack (Rivermax for ST 2110, XLIO/VMA, PTP) |
+| `connectx7-rdma-programming` | libibverbs / rdma-cm code: MRs, QPs, work requests, completions, RoCE addressing |
+| `connectx7-mlx5-driver` | mlx5_core / mlx5_ib source layout, module params, Kconfig, tracepoints, debugfs, devlink |
+| `connectx7-troubleshooting` | Something is broken: link down, health errors, work-completion errors, dmesg messages |
+| `connectx7-performance` | It works but is slow: NUMA, IRQ affinity, coalescing, rings, PCIe, perftest |
+| `connectx7-vma` | libvma: LD_PRELOAD, VMA_* variables, the vma_extra.h API |
 
-| Skill | Triggers On | Purpose |
-|-------|-------------|---------|
-| `connectx7-development` | ConnectX, DOCA, driver | General reference, installation |
-| `connectx7-vma` | VMA, libvma, kernel bypass | VMA API, dynamic loading patterns |
-| `connectx7-rdma-programming` | RDMA, verbs, ibv_post_send | libibverbs programming guide |
-| `connectx7-mlx5-driver` | mlx5, kernel driver, dmesg | Driver internals, debugging, tracepoints |
-| `connectx7-performance` | latency, tuning, NUMA | Performance optimization guide |
-| `connectx7-troubleshooting` | error, debug, troubleshoot | Error codes, diagnostics, fixes |
+The full list of primary sources is in
+[`skills/connectx7-development/references/sources.md`](skills/connectx7-development/references/sources.md).
 
-### MCP Server (Live Documentation)
-
-| Tool | Description |
-|------|-------------|
-| `fetch_nvidia_docs` | Fetch docs from NVIDIA/kernel.org |
-| `search_nvidia_docs` | Search across all documentation |
-| `list_nvidia_docs` | List available doc sources |
-| `get_official_links` | Get all official documentation URLs |
-| `clear_doc_cache` | Clear cached docs |
-
-**Documentation Sources:**
-- ConnectX-7 User Manual
-- DOCA SDK
-- VMA User Manual
-- RDMA Programming Guide
-- MLNX_OFED Documentation
-- mlx5 Kernel Driver (kernel.org)
-- DPDK mlx5 Driver
-
-## Installation
-
-### Your Team (via your marketplace)
+## Install
 
 ```bash
-# Add marketplace (one time)
 /plugin marketplace add PaulRoze/connectx7-mcp-plugin
-
-# Install plugin
 /plugin install connectx7-development@connectx7-mcp-plugin
 ```
 
-### Local Development
+## Updates
 
-**Requires:** Python >= 3.10
+Third-party marketplaces don't auto-update by default. Turn it on once: run `/plugin`, open the
+**Marketplaces** tab, select `connectx7-mcp-plugin`, then **Enable auto-update**.
 
-```bash
-git clone https://github.com/PaulRoze/connectx7-mcp-plugin.git
-cd connectx7-mcp-plugin
-
-# Install MCP server (in virtual environment)
-cd mcp-server
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e ".[dev]"
-
-# Run tests
-pytest tests/ -v
-```
-
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "mcpServers": {
-    "connectx7-docs": {
-      "command": "/path/to/connectx7-marketplace/mcp-server/.venv/bin/connectx7-mcp"
-    }
-  }
-}
-```
-
-### Verify Installation
-
-Skills should appear when relevant keywords are mentioned in conversation (e.g., "ConnectX", "VMA", "RDMA").
-
-## Usage Examples
-
-### Automatic Triggering
-
-Just mention these in conversation:
-- "How do I install DOCA?" → `connectx7-development` skill
-- "Show me VMA API" → `connectx7-vma` skill
-- "ibv_post_send example" → `connectx7-rdma-programming` skill
-- "mlx5 tracepoints" → `connectx7-mlx5-driver` skill
-- "ConnectX-7 latency tuning" → `connectx7-performance` skill
-- "IBV_WC_REM_ACCESS_ERR" → `connectx7-troubleshooting` skill
-
-### MCP Tools
-
-```
-"Fetch the RDMA programming guide"
-"Search docs for kernel bypass"
-"What are all the official NVIDIA networking links?"
-```
-
-## Why This Plugin?
-
-**Problem:** Your teammate needs to work with ConnectX-7 drivers but documentation is scattered across NVIDIA, kernel.org, DPDK, and various PDFs. Without this, they'd spend days reverse engineering the driver.
-
-**Solution:** This plugin provides:
-1. **Embedded knowledge** - Works offline with comprehensive reference
-2. **Live docs** - Fetches latest from official sources
-3. **Error codes** - Complete reference for debugging
-4. **Code patterns** - Copy-paste ready VMA/RDMA code
-5. **Driver internals** - Kernel source locations, tracepoints, sysfs
-
-## Updating
-
-Push changes to GitHub. Teammates get updates on Claude Code restart.
+Or update by hand:
 
 ```bash
-git add .
-git commit -m "Add new error codes to troubleshooting"
-git push
+/plugin marketplace update connectx7-mcp-plugin
 ```
 
-## Official Documentation Links
+Teams can turn auto-update on for everyone with `"autoUpdate": true` on the marketplace's
+`extraKnownMarketplaces` entry in managed settings.
 
-- [ConnectX-7 User Manual](https://docs.nvidia.com/networking/display/connectx7vpi)
-- [DOCA SDK](https://docs.nvidia.com/doca/sdk/)
-- [VMA Documentation](https://docs.nvidia.com/networking/display/vmav9880/)
-- [RDMA Programming Guide](https://docs.nvidia.com/networking/display/rdmaawareprogrammingv17/)
-- [mlx5 Kernel Driver](https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5/)
-- [NVIDIA Networking Forums](https://forums.developer.nvidia.com/c/networking/)
+Maintainers: bump `version` in `.claude-plugin/plugin.json` on every release. Installed copies are
+pinned to that string and won't change until it does.
+
+## Upgrading from 1.x
+
+2.0.0 removes the `connectx7-docs` MCP server. It never started for marketplace installs (nothing
+put `connectx7-mcp` on PATH), and most of its doc URLs had moved. Claude's built-in WebFetch and
+WebSearch cover the same docs; the skills list the current URLs.
 
 ## License
 

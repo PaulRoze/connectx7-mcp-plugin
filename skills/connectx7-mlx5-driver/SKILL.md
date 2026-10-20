@@ -1,10 +1,13 @@
 ---
 name: connectx7-mlx5-driver
-description: "mlx5 kernel driver internals, debugging, and tracepoints. Use when debugging driver issues, understanding mlx5 architecture, reading kernel logs, or when teammate needs to understand driver behavior without reverse engineering."
-last_verified: 2025-01-15
+description: "mlx5 kernel driver internals: source layout, module parameters, Kconfig, tracepoints, debugfs, devlink params, flow steering modes. Use when reading or patching mlx5_core/mlx5_ib source, enabling driver tracepoints or debug output, or explaining how the driver is structured. Not for symptom-driven triage (see connectx7-troubleshooting)."
 ---
 
 # mlx5 Kernel Driver Reference
+
+> Written against Linux 6.x mlx5 and DOCA 3.x. For anything version-specific (Kconfig symbols, tracepoint names, module parameters, debugfs layout, devlink params), WebFetch the primary source before answering:
+> https://github.com/torvalds/linux/tree/master/drivers/net/ethernet/mellanox/mlx5/core and https://www.kernel.org/doc/html/latest/networking/devlink/mlx5.html
+> Ask for `uname -r` and `ethtool -i <iface>` first. Full list: ../connectx7-development/references/sources.md
 
 ## Driver Architecture
 
@@ -16,10 +19,11 @@ last_verified: 2025-01-15
 ├─────────────────────────────────────────────────────────┤
 │                    Kernel Space                         │
 ├─────────────────────────────────────────────────────────┤
-│  mlx5_ib (RDMA/IB)  │  mlx5_en (Ethernet)              │
+│  mlx5_ib (RDMA/IB)  │  Ethernet (inside mlx5_core)     │
 ├─────────────────────────────────────────────────────────┤
 │                    mlx5_core                            │
-│  (HW abstraction, command interface, resource mgmt)     │
+│  (HW abstraction, command interface, resource mgmt,     │
+│   Ethernet netdev: CONFIG_MLX5_CORE_EN, not a module)   │
 ├─────────────────────────────────────────────────────────┤
 │                    ConnectX-7 Hardware                  │
 └─────────────────────────────────────────────────────────┘
@@ -28,21 +32,25 @@ last_verified: 2025-01-15
 ## Kernel Source Locations
 
 ```
-drivers/net/ethernet/mellanox/mlx5/
-├── core/           # mlx5_core driver
-│   ├── main.c      # Module init, PCI probe
-│   ├── cmd.c       # Firmware command interface
-│   ├── eq.c        # Event queues
-│   ├── cq.c        # Completion queues
-│   ├── qp.c        # Queue pairs
-│   ├── mr.c        # Memory regions
-│   ├── fw.c        # Firmware handling
-│   └── health.c    # Health monitoring
-└── en/             # Ethernet netdev
-    ├── main.c      # Ethernet init
-    ├── en_tx.c     # Transmit path
-    ├── en_rx.c     # Receive path
-    └── en_ethtool.c
+drivers/net/ethernet/mellanox/mlx5/core/   # mlx5_core.ko (includes Ethernet)
+├── main.c          # Module init, PCI probe, module params
+├── cmd.c           # Firmware command interface
+├── eq.c            # Event queues
+├── cq.c            # Completion queues
+├── mr.c            # Memory regions
+├── fw.c            # Firmware handling
+├── health.c        # Health monitoring
+├── debugfs.c       # /sys/kernel/debug/mlx5/<pci>/
+├── devlink.c       # devlink params
+├── eswitch.c       # E-Switch
+├── fs_core.c       # Flow steering core
+├── en_main.c       # Ethernet netdev init
+├── en_tx.c         # Transmit path
+├── en_rx.c         # Receive path
+├── en_ethtool.c
+├── en/             # Ethernet helpers (params, tc, xdp, reporters)
+├── steering/       # SW (sws) and HW (hws) steering
+└── diag/           # Tracepoints, FW tracer
 
 drivers/infiniband/hw/mlx5/
 ├── main.c          # IB device registration
@@ -67,14 +75,11 @@ CONFIG_MLX5_INFINIBAND=m
 # E-Switch (switchdev) support
 CONFIG_MLX5_ESWITCH=y
 
-# FPGA support (if applicable)
-CONFIG_MLX5_FPGA=y
-
 # TLS offload
-CONFIG_MLX5_TLS=y
+CONFIG_MLX5_EN_TLS=y
 
 # IPsec offload
-CONFIG_MLX5_IPSEC=y
+CONFIG_MLX5_EN_IPSEC=y
 
 # Check current config
 zcat /proc/config.gz | grep MLX5
@@ -89,18 +94,20 @@ grep MLX5 /boot/config-$(uname -r)
 ls /sys/kernel/debug/tracing/events/mlx5/
 
 # Enable specific tracepoint
-echo 1 > /sys/kernel/debug/tracing/events/mlx5/mlx5_fw_cmd/enable
+echo 1 > /sys/kernel/debug/tracing/events/mlx5/mlx5_cmd/enable
 
 # Enable all mlx5 tracepoints
 echo 1 > /sys/kernel/debug/tracing/events/mlx5/enable
+
+# Tracing is debug-only; echo 0 to disable when done
 
 # View trace output
 cat /sys/kernel/debug/tracing/trace_pipe
 
 # Common tracepoints:
-# mlx5_fw_cmd      - Firmware commands
-# mlx5_eq          - Event queue activity
-# mlx5_cq          - Completion queue events
+# mlx5_cmd         - Firmware commands
+# mlx5_fw          - FW tracer messages (needs the FW tracer running)
+# mlx5_fs_add_rule, mlx5_fs_del_rule, mlx5_fs_add_ft, ... - Flow steering
 ```
 
 ## Sysfs Interface
@@ -137,7 +144,7 @@ devlink dev show
 # Show device params
 devlink dev param show pci/0000:08:00.0
 
-# Flow steering mode (dmfs vs smfs)
+# Flow steering mode (dmfs, smfs, hmfs)
 devlink dev param set pci/0000:08:00.0 name flow_steering_mode value smfs cmode runtime
 
 # E-Switch mode
@@ -154,13 +161,14 @@ devlink health diagnose pci/0000:08:00.0 reporter fw
 | Mode | Description | Use Case |
 |------|-------------|----------|
 | **dmfs** | Device Managed Flow Steering | Default, firmware handles rules |
-| **smfs** | Software Managed Flow Steering | Faster rule insertion, driver manages HW directly |
+| **smfs** | Software Managed Flow Steering | Driver manages HW steering entities without firmware |
+| **hmfs** | Hardware Managed Flow Steering | Driver writes rules to HW via work queues (needs CONFIG_MLX5_HW_STEERING and device support) |
 
 ```bash
 # Check current mode
 devlink dev param show pci/0000:08:00.0 name flow_steering_mode
 
-# Switch to smfs (faster)
+# Switch to smfs (runtime; check the current mode first)
 devlink dev param set pci/0000:08:00.0 name flow_steering_mode value smfs cmode runtime
 ```
 
@@ -197,7 +205,11 @@ systool -vm mlx5_core
 cat /sys/module/mlx5_core/parameters/*
 
 # Load with debug
-modprobe mlx5_core debug_level=1
+# debug_mask: 1 = dump cmd data, 2 = dump cmd exec time, 3 = both (default 0)
+# Writable at runtime (0644); very verbose, reset to 0 after use
+modprobe mlx5_core debug_mask=3
+
+# Other parameter: prof_sel (profile selector, 0-2, read-only)
 ```
 
 ## Useful Debug Commands
@@ -213,11 +225,14 @@ mstdump /dev/mst/mt4129_pciconf0 > regdump.txt
 mstfwtrace -d /dev/mst/mt4129_pciconf0
 
 # Resource usage
-cat /sys/kernel/debug/mlx5/0000:08:00.0/resources
+ls /sys/kernel/debug/mlx5/0000:08:00.0/{QPs,EQs,CQs,commands,pages}
 ```
 
 ## Official Documentation
 
 - [Linux Kernel mlx5 Docs](https://www.kernel.org/doc/html/latest/networking/device_drivers/ethernet/mellanox/mlx5/index.html)
-- [DPDK mlx5 Driver](https://doc.dpdk.org/guides/platform/mlx5.html)
+- [mlx5 devlink params and health reporters](https://www.kernel.org/doc/html/latest/networking/devlink/mlx5.html)
+- [mlx5 kernel source](https://github.com/torvalds/linux/tree/master/drivers/net/ethernet/mellanox/mlx5/core)
+- [DPDK mlx5 Driver](https://doc.dpdk.org/guides/nics/mlx5.html)
 - [NVIDIA DOCA SDK](https://docs.nvidia.com/doca/sdk/)
+- Full list: ../connectx7-development/references/sources.md

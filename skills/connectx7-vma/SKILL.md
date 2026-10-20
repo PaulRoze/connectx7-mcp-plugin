@@ -1,10 +1,15 @@
 ---
 name: connectx7-vma
-description: "VMA (Messaging Accelerator) kernel bypass API reference. Use when implementing VMA in code, loading libvma dynamically, or configuring VMA environment variables for high-performance networking."
-last_verified: 2025-01-15
+description: "VMA (libvma) socket acceleration: LD_PRELOAD usage, VMA_* environment variables, the vma_extra.h extra API (zero-copy receive, socketxtreme). Use when running or coding against libvma. For new projects consider XLIO; for ST 2110 see connectx7-development (Rivermax)."
 ---
 
 # VMA Kernel Bypass API
+
+> Written against VMA 9.8.84 (libvma). For anything version-specific (env variables, vma_extra.h API, supported NICs), WebFetch the primary source before answering. Ask the user for `ofed_info -s`, `ethtool -i <if>`, `uname -r`.
+> Docs: https://networking-docs.nvidia.com/vmaswum/9884 , https://github.com/Mellanox/libvma . Full list: ../connectx7-development/references/sources.md
+
+Status: latest libvma release is 9.8.84 (2026-01, bug fixes only). NVIDIA's newer socket-acceleration library is XLIO (https://github.com/Mellanox/libxlio, 3.71.2 latest stable); both ship as DOCA-Host profiles.
+For SMPTE ST 2110 use Rivermax (https://developer.nvidia.com/networking/rivermax), NVIDIA's ST 2110 SDK with hardware packet pacing.
 
 ## Loading VMA
 
@@ -14,14 +19,12 @@ LD_PRELOAD=/usr/lib64/libvma.so ./your_app
 
 # Environment variables
 VMA_SPEC=latency           # Optimize for latency
-VMA_RX_POLL=100000         # Polling cycles before blocking
-VMA_RX_BUFS=200000         # Receive buffers
-VMA_MEM_ALLOC_TYPE=2       # Huge pages (0=anon, 1=contig, 2=huge)
-VMA_IGMP_ENABLE=1          # Required for multicast
-VMA_TRACELEVEL=3           # Debug (0-5)
+VMA_TRACELEVEL=debug       # Log level (default info)
 ```
 
 ## VMA API Structure
+
+Example wrapper struct (yours, not libvma's). The real extra API is `struct vma_api_t` in `<mellanox/vma_extra.h>`.
 
 ```c
 typedef struct {
@@ -77,7 +80,9 @@ int LoadVmaSharedLibrary(vma_t *pVma, bool use_simulation)
 
     // Get VMA extended API
     socklen_t len = sizeof(pVma->api);
-    pVma->getsockopt(-1, SOL_SOCKET, SO_VMA_GET_API, &pVma->api, &len);
+    pVma->api = NULL;
+    if (pVma->getsockopt(-1, SOL_SOCKET, SO_VMA_GET_API, &pVma->api, &len) < 0)
+        pVma->api = NULL;  // not running under VMA: no extra API, check api before use
 
     pVma->SimulatedApi = false;
     return 0;
@@ -146,9 +151,9 @@ int JoinMulticast(vma_t *vma, const char *mcast_ip, uint16_t port, const char *i
 
 void ReceiveLoop(vma_t *vma, int fd, volatile bool *running)
 {
-    struct mmsghdr msgs[BATCH_SIZE];
+    struct mmsghdr msgs[BATCH_SIZE] = {0};
     struct iovec iovecs[BATCH_SIZE];
-    uint8_t buffers[BATCH_SIZE][1500];
+    uint8_t buffers[BATCH_SIZE][1500];  // each buffer must be >= MTU (use 9000 for jumbo frames)
 
     for (int i = 0; i < BATCH_SIZE; i++) {
         iovecs[i].iov_base = buffers[i];
@@ -172,11 +177,13 @@ void ReceiveLoop(vma_t *vma, int fd, volatile bool *running)
 
 ```c
 // Get extended API after creating socket
-vma_api_t *api;
+vma_api_t *api = NULL;
 socklen_t len = sizeof(api);
-getsockopt(-1, SOL_SOCKET, SO_VMA_GET_API, &api, &len);
+if (getsockopt(-1, SOL_SOCKET, SO_VMA_GET_API, &api, &len) < 0 || api == NULL)
+    return;  // not running under VMA
 
-// Zero-copy receive
-api->recvfrom_zcopy(fd, buf, len, flags, from, fromlen);
+// Zero-copy receive (flags is int *, in/out)
+int flags = 0;
+api->recvfrom_zcopy(fd, buf, len, &flags, from, fromlen);
 api->free_packets(fd, pkts, count);
 ```
