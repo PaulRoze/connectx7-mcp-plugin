@@ -5,7 +5,7 @@ description: "ConnectX-7 symptom triage: link down, firmware or health errors, R
 
 # ConnectX-7 Troubleshooting Guide
 
-> Written against DOCA 3.x / rdma-core 5x / Linux 6.x mlx5. For anything version-specific (dmesg strings, devlink reporters, MFT tool options, firmware versions, VMA env vars), WebFetch the primary source before answering: https://www.kernel.org/doc/html/latest/networking/devlink/mlx5.html and https://networking-docs.nvidia.com/mftswum/4300.
+> Written against DOCA 3.x / rdma-core v65 / Linux 6.x mlx5. For anything version-specific (dmesg strings, devlink reporters, MFT tool options, firmware versions, VMA env vars), WebFetch the primary source before answering: https://www.kernel.org/doc/html/latest/networking/devlink/mlx5.html and https://networking-docs.nvidia.com/mftswum/4300.
 > Ask the user for `ofed_info -s`, `ethtool -i <iface>`, `uname -r` first. Full list: ../connectx7-development/references/sources.md
 
 ## Quick Diagnostic Commands

@@ -106,7 +106,7 @@ cat /sys/kernel/debug/tracing/trace_pipe
 
 # Common tracepoints:
 # mlx5_cmd         - Firmware commands
-# mlx5_fw          - FW tracer messages (needs the FW tracer running)
+# mlx5_fw          - FW tracer messages (only on the PF that owns the FW tracer)
 # mlx5_fs_add_rule, mlx5_fs_del_rule, mlx5_fs_add_ft, ... - Flow steering
 ```
 

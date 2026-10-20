@@ -1,7 +1,7 @@
 {
   "name": "connectx7-development",
   "description": "Skills for NVIDIA ConnectX-7 development: DOCA-Host setup, RDMA verbs, mlx5 driver internals, VMA/XLIO, tuning, troubleshooting, and ST 2110 stack pointers. Each skill links the primary docs to check before version-specific answers.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": {
     "name": "Pavel Rozentsvet",
     "email": "111685920+PaulRoze@users.noreply.github.com"
